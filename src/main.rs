@@ -297,14 +297,19 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
             color: #fca5a5;
         }}
         
+        .dark .prose pre {{
+            background: #0f172a;
+            color: #f9fafb;
+        }}
+        
         .dark .prose blockquote {{
             color: #cbd5e1;
             border-left-color: #475569;
-            background: #1e293b;
+            background: #0f172a;
         }}
         
         .dark .prose th {{
-            background: #1e293b;
+            background: #0f172a;
             border-bottom-color: #475569;
         }}
         
@@ -314,6 +319,16 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
         
         .dark .prose hr {{
             border-top-color: #334155;
+        }}
+        
+        .dark .prose a {{
+            color: #60a5fa;
+            text-decoration-color: #3b82f6;
+        }}
+        
+        .dark .prose a:hover {{
+            color: #93c5fd;
+            text-decoration-color: #60a5fa;
         }}
         
         /* Loading animation */
@@ -438,8 +453,8 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
                     </div>
                     <div class="theme-toggle" onclick="toggleTheme()">
                         <div class="theme-toggle-slider">
-                            <span class="dark-icon" style="display: none;">🌙</span>
-                            <span class="light-icon">☀️</span>
+                            <span class="theme-icon dark-icon" style="display: none;">🌙</span>
+                            <span class="theme-icon light-icon">☀️</span>
                         </div>
                     </div>
                 </div>
