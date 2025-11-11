@@ -74,6 +74,12 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
         pre {{ background: #f8f8f8; padding: 10px; border-radius: 5px; overflow-x: auto; }}
         img {{ max-width: 100%; }}
     </style>
+    <script>
+        // Auto-reload every 1 second
+        setTimeout(() => {{
+            window.location.reload();
+        }}, 1000);
+    </script>
 </head>
 <body>
 {}
