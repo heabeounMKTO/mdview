@@ -2,10 +2,16 @@ use comrak::{markdown_to_html, Options};
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::mpsc;
 use std::time::Duration;
 use tokio::time;
-use warp::Filter;
+use axum::{
+    routing::get,
+    Router,
+    response::{Html, Json},
+};
+use serde_json::json;
+use tower_http::services;
 
 const OUTPUT_FILE: &str = "output.html";
 const STATUS_FILE: &str = "status.json";
@@ -60,27 +66,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Start simple HTTP server
-    let cors = warp::cors()
-        .allow_any_origin()
-        .allow_methods(vec!["GET"]);
+    // Build router
+    let app = Router::new()
+        .route("/", get(serve_html))
+        .route("/output.html", get(serve_html))
+        .route("/status.json", get(serve_status));
 
-    let status_route = warp::path("status.json")
-        .and(warp::fs::file(STATUS_FILE))
-        .with(cors.clone());
-
-    let html_route = warp::path("output.html")
-        .and(warp::fs::file(OUTPUT_FILE))
-        .with(cors);
-
-    let routes = status_route.or(html_route);
-
-    println!("Server running at http://localhost:3030/output.html");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3030").await?;
+    
+    println!("Server running at http://localhost:3030");
     println!("Press Ctrl+C to exit");
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn serve_html() -> Html<String> {
+    let content = fs::read_to_string(OUTPUT_FILE).unwrap_or_else(|_| String::from("Error loading file"));
+    Html(content)
+}
+
+async fn serve_status() -> Json<serde_json::Value> {
+    let content = fs::read_to_string(STATUS_FILE).unwrap_or_else(|_| String::from(r#"{"timestamp":0}"#));
+    let json: serde_json::Value = serde_json::from_str(&content).unwrap_or(json!({"timestamp": 0}));
+    Json(json)
 }
 
 fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
