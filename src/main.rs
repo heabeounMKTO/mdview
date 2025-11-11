@@ -11,7 +11,6 @@ use axum::{
     response::{Html, Json},
 };
 use serde_json::json;
-use tower_http::services;
 
 const OUTPUT_FILE: &str = "output.html";
 const STATUS_FILE: &str = "status.json";
@@ -103,13 +102,17 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
     let status = format!(r#"{{"timestamp":{}}}"#, timestamp);
     fs::write(STATUS_FILE, status)?;
     
+    let title = input_path.file_name().unwrap().to_str().unwrap_or("Markdown");
+    let filename = input_path.file_name().unwrap().to_str().unwrap_or("document.md");
+    let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
+    
     let output = format!(
         r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{}</title>
+    <title>{title}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -327,14 +330,25 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
     </style>
     <script>
         // Check for updates by polling status.json
-        let lastUpdate = {};
+        let lastUpdate = null;
+        
+        // Set initial timestamp
+        (async () => {{
+            try {{
+                const response = await fetch('/status.json', {{ cache: 'no-store' }});
+                const data = await response.json();
+                lastUpdate = data.timestamp;
+            }} catch (e) {{
+                console.log('Initial check failed:', e);
+            }}
+        }})();
         
         setInterval(async () => {{
             try {{
                 const response = await fetch('/status.json', {{ cache: 'no-store' }});
                 const data = await response.json();
                 
-                if (data.timestamp && data.timestamp !== lastUpdate) {{
+                if (lastUpdate !== null && data.timestamp && data.timestamp !== lastUpdate) {{
                     console.log('Update detected, refreshing...');
                     document.body.style.opacity = '0.7';
                     setTimeout(() => window.location.reload(), 200);
@@ -353,7 +367,7 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
                 <div class="flex items-center space-x-3">
                     <div class="w-2 h-2 bg-green-500 rounded-full loading"></div>
                     <h1 class="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Live Preview: <span class="text-slate-900 dark:text-slate-100 font-semibold">{}</span>
+                        Live Preview: <span class="text-slate-900 dark:text-slate-100 font-semibold">{filename}</span>
                     </h1>
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-500">
@@ -365,25 +379,20 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
         <!-- Content Card -->
         <article class="card bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 md:p-12 transition-all">
             <div class="prose prose-slate max-w-none">
-{}
+{html}
             </div>
         </article>
         
         <!-- Footer -->
         <div class="text-center mt-6 text-sm text-slate-500 dark:text-slate-500">
-            Generated at {} • Powered by comrak
+            Generated at {time_str} • Powered by comrak 
         </div>
     </div>
 </body>
-</html>"#,
-        input_path.file_name().unwrap().to_str().unwrap_or("Markdown"),
-        timestamp,
-        input_path.file_name().unwrap().to_str().unwrap_or("document.md"),
-        html,
-        chrono::Local::now().format("%H:%M:%S")
+</html>"#
     );
     
     fs::write(OUTPUT_FILE, output)?;
-    println!("✨ Rendered at {}", chrono::Local::now().format("%H:%M:%S"));
+    println!("✨ Rendered at {}", time_str);
     Ok(())
 }
