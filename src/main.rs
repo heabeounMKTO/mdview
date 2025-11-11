@@ -271,51 +271,49 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
         }}
         
         /* Dark mode support */
-        @media (prefers-color-scheme: dark) {{
-            body {{
-                background: #0f172a;
-            }}
-            
-            .card {{
-                background: #1e293b;
-                border-color: #334155;
-            }}
-            
-            .prose {{
-                color: #e2e8f0;
-            }}
-            
-            .prose h1, .prose h2, .prose h3, .prose strong {{
-                color: #f1f5f9;
-            }}
-            
-            .prose h2 {{
-                border-bottom-color: #334155;
-            }}
-            
-            .prose code {{
-                background: #334155;
-                color: #fca5a5;
-            }}
-            
-            .prose blockquote {{
-                color: #cbd5e1;
-                border-left-color: #475569;
-                background: #1e293b;
-            }}
-            
-            .prose th {{
-                background: #1e293b;
-                border-bottom-color: #475569;
-            }}
-            
-            .prose td {{
-                border-bottom-color: #334155;
-            }}
-            
-            .prose hr {{
-                border-top-color: #334155;
-            }}
+        .dark body {{
+            background: linear-gradient(to bottom right, #0f172a, #1e293b);
+        }}
+        
+        .dark .card {{
+            background: #1e293b;
+            border-color: #334155;
+        }}
+        
+        .dark .prose {{
+            color: #e2e8f0;
+        }}
+        
+        .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose strong {{
+            color: #f1f5f9;
+        }}
+        
+        .dark .prose h2 {{
+            border-bottom-color: #334155;
+        }}
+        
+        .dark .prose code {{
+            background: #334155;
+            color: #fca5a5;
+        }}
+        
+        .dark .prose blockquote {{
+            color: #cbd5e1;
+            border-left-color: #475569;
+            background: #1e293b;
+        }}
+        
+        .dark .prose th {{
+            background: #1e293b;
+            border-bottom-color: #475569;
+        }}
+        
+        .dark .prose td {{
+            border-bottom-color: #334155;
+        }}
+        
+        .dark .prose hr {{
+            border-top-color: #334155;
         }}
         
         /* Loading animation */
@@ -327,8 +325,72 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
         .loading {{
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }}
+        
+        /* Theme toggle button */
+        .theme-toggle {{
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }}
+        
+        .dark .theme-toggle {{
+            background: #475569;
+        }}
+        
+        .theme-toggle-slider {{
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }}
+        
+        .dark .theme-toggle-slider {{
+            transform: translateX(30px);
+        }}
+        
+        .theme-icon {{
+            line-height: 1;
+        }}
     </style>
     <script>
+        // Theme management
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') {{
+            html.classList.add('dark');
+        }}
+        
+        function toggleTheme() {{
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // Update icon
+            document.querySelector('.dark-icon').style.display = isDark ? 'block' : 'none';
+            document.querySelector('.light-icon').style.display = isDark ? 'none' : 'block';
+        }}
+        
+        // Set initial icon state
+        window.addEventListener('DOMContentLoaded', () => {{
+            const isDark = html.classList.contains('dark');
+            document.querySelector('.dark-icon').style.display = isDark ? 'block' : 'none';
+            document.querySelector('.light-icon').style.display = isDark ? 'none' : 'block';
+        }});
+        
         // Check for updates by polling status.json
         let lastUpdate = null;
         
@@ -370,8 +432,16 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
                         Live Preview: <span class="text-slate-900 dark:text-slate-100 font-semibold">{filename}</span>
                     </h1>
                 </div>
-                <div class="text-xs text-slate-500 dark:text-slate-500">
-                    Watching for changes
+                <div class="flex items-center space-x-4">
+                    <div class="text-xs text-slate-500 dark:text-slate-500">
+                        Watching for changes
+                    </div>
+                    <div class="theme-toggle" onclick="toggleTheme()">
+                        <div class="theme-toggle-slider">
+                            <span class="dark-icon" style="display: none;">🌙</span>
+                            <span class="light-icon">☀️</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
