@@ -1,16 +1,16 @@
-use comrak::{markdown_to_html, Options};
+use axum::{
+    Router,
+    response::{Html, Json},
+    routing::get,
+};
+use comrak::{Options, markdown_to_html};
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::Duration;
 use tokio::time;
-use axum::{
-    routing::get,
-    Router,
-    response::{Html, Json},
-};
-use serde_json::json;
 
 const OUTPUT_FILE: &str = "output.html";
 const STATUS_FILE: &str = "status.json";
@@ -33,14 +33,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     render_markdown(&input_path)?;
 
     let input_path_clone = input_path.clone();
-    
+
     // Spawn file watcher in a separate task
     tokio::spawn(async move {
         let (tx, rx) = mpsc::channel();
         let mut watcher = RecommendedWatcher::new(tx, Config::default()).unwrap();
-        watcher.watch(&input_path_clone, RecursiveMode::NonRecursive).unwrap();
+        watcher
+            .watch(&input_path_clone, RecursiveMode::NonRecursive)
+            .unwrap();
 
-        println!("Watching '{}'... Output: {}", input_path_clone.display(), OUTPUT_FILE);
+        println!(
+            "Watching '{}'... Output: {}",
+            input_path_clone.display(),
+            OUTPUT_FILE
+        );
 
         loop {
             match rx.recv_timeout(Duration::from_millis(100)) {
@@ -72,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/status.json", get(serve_status));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3030").await?;
-    
+
     println!("Server running at http://localhost:3030");
     println!("Press Ctrl+C to exit");
 
@@ -82,30 +88,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn serve_html() -> Html<String> {
-    let content = fs::read_to_string(OUTPUT_FILE).unwrap_or_else(|_| String::from("Error loading file"));
+    let content =
+        fs::read_to_string(OUTPUT_FILE).unwrap_or_else(|_| String::from("Error loading file"));
     Html(content)
 }
 
 async fn serve_status() -> Json<serde_json::Value> {
-    let content = fs::read_to_string(STATUS_FILE).unwrap_or_else(|_| String::from(r#"{"timestamp":0}"#));
+    let content =
+        fs::read_to_string(STATUS_FILE).unwrap_or_else(|_| String::from(r#"{"timestamp":0}"#));
     let json: serde_json::Value = serde_json::from_str(&content).unwrap_or(json!({"timestamp": 0}));
     Json(json)
 }
 
 fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let markdown = fs::read_to_string(input_path)?;
-    let options = Options::default();
+    let mut options = Options::default();
+    options.extension.table = true;
+    options.extension.autolink = true;
+    options.extension.strikethrough = true;
+    options.extension.tasklist = true;
+    options.extension.tagfilter = true;
     let html = markdown_to_html(&markdown, &options);
     let timestamp = chrono::Local::now().timestamp_millis();
-    
+
     // Write status file for browser to check
     let status = format!(r#"{{"timestamp":{}}}"#, timestamp);
     fs::write(STATUS_FILE, status)?;
-    
-    let title = input_path.file_name().unwrap().to_str().unwrap_or("Markdown");
-    let filename = input_path.file_name().unwrap().to_str().unwrap_or("document.md");
+
+    let title = input_path
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap_or("Markdown");
+    let filename = input_path
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap_or("document.md");
     let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
-    
+
     let output = format!(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -476,7 +497,7 @@ fn render_markdown(input_path: &PathBuf) -> Result<(), Box<dyn std::error::Error
 </body>
 </html>"#
     );
-    
+
     fs::write(OUTPUT_FILE, output)?;
     println!("✨ Rendered at {}", time_str);
     Ok(())
